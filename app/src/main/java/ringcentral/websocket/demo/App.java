@@ -16,9 +16,9 @@ import java.util.TimerTask;
 public class App {
     public String getGreeting() throws RestException, IOException {
         RestClient rc = new RestClient(
-            System.getenv("RINGCENTRAL_CLIENT_ID"),
-            System.getenv("RINGCENTRAL_CLIENT_SECRET"),
-            System.getenv("RINGCENTRAL_SERVER_URL")
+                System.getenv("RINGCENTRAL_CLIENT_ID"),
+                System.getenv("RINGCENTRAL_CLIENT_SECRET"),
+                System.getenv("RINGCENTRAL_SERVER_URL")
         );
         rc.authorize(System.getenv("RINGCENTRAL_JWT_TOKEN"));
         Subscription subscription = new Subscription(rc,
@@ -29,24 +29,26 @@ public class App {
         );
         subscription.subscribe();
 
-        new Timer().scheduleAtFixedRate(new TimerTask(){
+        new Timer().scheduleAtFixedRate(new TimerTask() {
             @Override
-            public void run(){
+            public void run() {
                 try {
+                    rc.refresh();
                     rc.restapi().account().extension().companyPager().post(
                             new CreateInternalTextMessageRequest()
                                     .text("Hello world")
                                     .from(new PagerCallerInfoRequest().extensionId(rc.token.owner_id))
                                     .to(new PagerCallerInfoRequest[]{new PagerCallerInfoRequest().extensionId(rc.token.owner_id)})
                     );
-                    System.out.println("Pager sent");
-                } catch (RestException e) {
-                    throw new RuntimeException(e);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
+                } catch (RestException e) {
+                    throw new RuntimeException(e);
                 }
+                System.out.println("Pager sent");
+
             }
-        },0,2400000);
+        }, 0, 2400000);
 
         return "Hello World!";
     }
