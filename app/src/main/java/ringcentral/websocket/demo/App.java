@@ -3,12 +3,55 @@
  */
 package ringcentral.websocket.demo;
 
+import com.ringcentral.RestClient;
+import com.ringcentral.RestException;
+import com.ringcentral.definitions.CreateInternalTextMessageRequest;
+import com.ringcentral.definitions.PagerCallerInfoRequest;
+import com.ringcentral.websocket.Subscription;
+
+import java.io.IOException;
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class App {
-    public String getGreeting() {
+    public String getGreeting() throws RestException, IOException {
+        RestClient rc = new RestClient(
+            System.getenv("RINGCENTRAL_CLIENT_ID"),
+            System.getenv("RINGCENTRAL_CLIENT_SECRET"),
+            System.getenv("RINGCENTRAL_SERVER_URL")
+        );
+        rc.authorize(System.getenv("RINGCENTRAL_JWT_TOKEN"));
+        Subscription subscription = new Subscription(rc,
+                new String[]{"/restapi/v1.0/account/~/extension/~/message-store"},
+                (jsonString) -> {
+                    System.out.println(jsonString);
+                }
+        );
+        subscription.subscribe();
+
+        new Timer().scheduleAtFixedRate(new TimerTask(){
+            @Override
+            public void run(){
+                try {
+                    rc.restapi().account().extension().companyPager().post(
+                            new CreateInternalTextMessageRequest()
+                                    .text("Hello world")
+                                    .from(new PagerCallerInfoRequest().extensionId(rc.token.owner_id))
+                                    .to(new PagerCallerInfoRequest[]{new PagerCallerInfoRequest().extensionId(rc.token.owner_id)})
+                    );
+                    System.out.println("Pager sent");
+                } catch (RestException e) {
+                    throw new RuntimeException(e);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        },0,2400000);
+
         return "Hello World!";
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws RestException, IOException {
         System.out.println(new App().getGreeting());
     }
 }
